@@ -1,7 +1,7 @@
-serverUrl: http://mywebsite.com
-shortTitle: My Blog
-title: My F# Blog
-description: My ramblings and experiences with building stuff with F#
-masterUserDisplayName: My Name
+serverUrl: http://biominds.pl
+shortTitle: BioMinds XR
+title: BioMinds Healtcare Sp. z o.o.
+description: The only XR rehabilitation system combining movement, cognitive and psychological therapies
+masterUserDisplayName: BioMinds
 masterLanguage: en
-languages: "en->English,es->Spanish,hu->Hungarian"
+languages: "en->English,pl->Polish"

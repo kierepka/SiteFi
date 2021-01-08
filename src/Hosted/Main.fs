@@ -53,16 +53,16 @@ module Yaml =
     open YamlDotNet.Serialization
 
     let SplitIntoHeaderAndContent (source: string) =
-        let delimRE = Regex("^---\\w*\r?$", RegexOptions.Compiled ||| RegexOptions.Multiline)
+        let delimitRE = Regex("^---\\w*\r?$", RegexOptions.Compiled ||| RegexOptions.Multiline)
         let searchFrom = if source.StartsWith("---") then 3 else 0
-        let m = delimRE.Match(source, searchFrom)
+        let m = delimitRE.Match(source, searchFrom)
         if m.Success then
             source.[searchFrom..m.Index-1], source.[m.Index + m.Length..]
         else
             "", source
 
     let OfYaml<'T> (yaml: string) =
-        let deserializer = (new DeserializerBuilder()).Build()
+        let deserializer = (DeserializerBuilder()).Build()
         if String.IsNullOrWhiteSpace yaml then
             deserializer.Deserialize<'T>("{}")
         else
@@ -101,20 +101,20 @@ module Helpers =
     let RSS_DATE (dt: DateTime) = dt.ToString("ddd, dd MMM yyyy HH:mm:ss UTC")
 
     // Return (fullpath, filename-without-extension, (year, month, day), slug, extension)
-    let (|ArticleFile|_|) (fullpath: string) =
+    let (|ArticleFile|_|) (filepath: string) =
         let I s = Int32.Parse s
-        let filename = Path.GetFileName(fullpath)
-        let filenameWithoutExt = Path.GetFileNameWithoutExtension(fullpath)
-        let r = new Regex("^([0-9]+)-([0-9]+)-([0-9]+)-(.+)\.(md)")
-        let r2 = new Regex("^([1-2][0-9][0-9][0-9])([0-1][0-9])([0-3][0-9])-(.+)\.(md)")
+        let filename = Path.GetFileName(filepath)
+        let filenameWithoutExt = Path.GetFileNameWithoutExtension(filepath)
+        let r = Regex("^([0-9]+)-([0-9]+)-([0-9]+)-(.+)\.(md)")
+        let r2 = Regex("^([1-2][0-9][0-9][0-9])([0-1][0-9])([0-3][0-9])-(.+)\.(md)")
         if r.IsMatch(filename) then
             let a = r.Match(filename)
             let V (i: int) = a.Groups.[i].Value
-            Some (fullpath, filenameWithoutExt, (I (V 1), I (V 2), I (V 3)), V 4, V 5)
+            Some (filepath, filenameWithoutExt, (I (V 1), I (V 2), I (V 3)), V 4, V 5)
         elif r2.IsMatch(filename) then
             let a = r2.Match(filename)
             let V (i: int) = a.Groups.[i].Value
-            Some (fullpath, filenameWithoutExt, (I (V 1), I (V 2), I (V 3)), V 4, V 5)
+            Some (filepath, filenameWithoutExt, (I (V 1), I (V 2), I (V 3)), V 4, V 5)
         else
             None
 
@@ -231,16 +231,16 @@ module Site =
                 Directory.EnumerateFiles(folder, "*.md", SearchOption.TopDirectoryOnly)
                 |> Seq.toList
                 |> List.choose (Helpers.(|ArticleFile|_|))
-                |> List.fold (fun map (fullpath, fname, (year, month, day), slug, extension) ->
-                    eprintfn "Found file: %s" fname
+                |> List.fold (fun map (filepath, filename, (year, month, day), slug, extension) ->
+                    eprintfn "Found file: %s" filename
                     let header, content =
-                        File.ReadAllText fullpath
+                        File.ReadAllText filepath
                         |> Yaml.SplitIntoHeaderAndContent
                     let article = Yaml.OfYaml<RawArticle> header
                     let title = Helpers.NULL_TO_EMPTY article.title
                     let subtitle = Helpers.NULL_TO_EMPTY article.subtitle
                     let ``abstract`` = Helpers.NULL_TO_EMPTY article.``abstract``
-                    let url = Urls.POST_URL (user, fname)
+                    let url = Urls.POST_URL (user, filename)
                     eprintfn "DEBUG-URL: %s" url
                     // If the content is given in the header, use that instead.
                     let content =
@@ -262,8 +262,8 @@ module Site =
                         else
                             []
                     let language = Helpers.NULL_TO_EMPTY article.language
-                    eprintfn "DEBUG-ADD: (%s, %s)\n-------------------" user fname
-                    Map.add (user, fname)
+                    eprintfn "DEBUG-ADD: (%s, %s)\n-------------------" user filename
+                    Map.add (user, filename)
                         {
                             Title = title
                             Subtitle = subtitle
@@ -303,7 +303,7 @@ module Site =
         |> File.ReadAllText
         |> Doc.Verbatim
 
-    let Page langopt (config: Config) (pageTitle: option<string>) hasBanner articles (body: Doc) =
+    let Page langOption (config: Config) (pageTitle: option<string>) hasBanner articles (body: Doc) =
         // Compute the language keys used in all articles
         let languages =
             articles
@@ -319,12 +319,12 @@ module Site =
             // Turn a language key to a (key, displayname) pair.
             // Empty input corresponds to the master language.
             let LANG lang =
-                let langkey =
+                let langKey =
                     if String.IsNullOrEmpty lang then config.MasterLanguage else lang
-                if config.Languages.ContainsKey langkey then
-                    lang, config.Languages.[langkey]
+                if config.Languages.ContainsKey langKey then
+                    lang, config.Languages.[langKey]
                 else
-                    lang, langkey
+                    lang, langKey
             if languages.Length > 0 then
                 (LANG "") :: List.map LANG languages
             else
@@ -350,7 +350,7 @@ module Site =
                         .Languages(
                             languages
                             |> List.map (fun (url_lang, lang) ->
-                                if langopt = url_lang then
+                                if langOption = url_lang then
                                     MainTemplate.LanguageItemActive()
                                         .Title(lang)
                                         .Url(Urls.LANG url_lang)
@@ -450,7 +450,7 @@ module Site =
 
     let ArticlePage (config: Config) articles (article: Article) =
         // Zero out if article has the master language
-        let langopt = URL_LANG config article.Language
+        let langOpt = URL_LANG config article.Language
         MainTemplate.ArticlePage()
             // Main content panel
             .Article(
@@ -463,7 +463,7 @@ module Site =
             // Sidebar
             .Sidebar(BlogSidebar config articles article)
             .Doc()
-        |> Page langopt config (Some article.Title) false articles
+        |> Page langOpt config (Some article.Title) false articles
 
     // The silly ref's are needed because offline sitelets are
     // initialized in their own special way, without having access
