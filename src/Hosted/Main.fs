@@ -123,7 +123,7 @@ module Site =
     open WebSharper.UI.Html
 
     type MainTemplate = Templating.Template<"../hosted/index.html", serverLoad=Templating.ServerLoad.WhenChanged>
-
+        
     type [<CLIMutable>] RawConfig =
         {
             serverUrl: string
@@ -336,7 +336,7 @@ module Site =
 #endif
             .NavbarOverlay(if hasBanner then "overlay-bar" else "")
             .Head(head)
-            .ShortTitle(config.ShortTitle)
+            .ShortTitle(config.ShortTitle)            
             .Title(
                 match pageTitle with
                 | None -> ""
