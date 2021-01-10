@@ -298,11 +298,6 @@ module Site =
             "Latest", "#", latest
         ]
 
-    let private head() =
-        __SOURCE_DIRECTORY__ + "/../Hosted/js/Client.head.html"
-        |> File.ReadAllText
-        |> Doc.Verbatim
-
     let Page langOption (config: Config) (pageTitle: option<string>) hasBanner articles (body: Doc) =
         // Compute the language keys used in all articles
         let languages =
@@ -329,13 +324,12 @@ module Site =
                 (LANG "") :: List.map LANG languages
             else
                 []
-        let head = head()
         MainTemplate()
+        
 #if !DEBUG
             .ReleaseMin(".min")
 #endif
             .NavbarOverlay(if hasBanner then "overlay-bar" else "")
-            .Head(head)
             .ShortTitle(config.ShortTitle)            
             .Title(
                 match pageTitle with
